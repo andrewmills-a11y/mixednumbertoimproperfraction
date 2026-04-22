@@ -1,0 +1,399 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Improper Fraction Pizza Shop</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --accent: #38bdf8;
+            --cheese: #ffd700;
+        }
+
+
+        * { box-sizing: border-box; }
+
+
+        body {
+            font-family: 'Arial Rounded MT Bold', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+
+        #game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5vh 2vw;
+            width: 100%;
+            gap: 1vh;
+        }
+
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 6vh;
+            background: rgba(255,255,255,0.05);
+            padding: 0 2vw;
+            border-radius: 15px;
+        }
+
+
+        .stats { color: var(--accent); font-size: 2.5vh; font-weight: bold; }
+
+
+        #visual-equation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3vw;
+            height: 18vh;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            border: 2px solid #334155;
+        }
+
+
+        .math-num { font-size: 10vh; font-weight: 900; line-height: 1; }
+        .fraction-stack { display: flex; flex-direction: column; align-items: center; font-size: 5vh; }
+        .frac-line { border-bottom: 0.6vh solid white; width: 120%; margin-bottom: 5px; }
+        .frac-den { color: var(--cheese); }
+
+
+        #pizza-grid {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 2vw;
+            min-height: 0;
+        }
+
+
+        .pizza-wrapper { display: flex; flex-direction: column; align-items: center; }
+        canvas { max-width: 22vw; max-height: 25vh; cursor: crosshair; }
+        .pizza-tag { font-size: 1.8vh; color: var(--accent); margin-top: 0.5vh; text-transform: uppercase; }
+
+
+        .controls {
+            height: 32vh;
+            background: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            border: 2px solid #334155;
+            padding: 1vh;
+            margin-top: auto;
+        }
+
+
+        .improper-input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5vh;
+        }
+
+
+        .input-frac-line {
+            width: 20vh;
+            height: 0.8vh;
+            background-color: white;
+            border-radius: 5px;
+        }
+
+
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-label { position: absolute; left: -16vh; font-size: 2vh; color: #94a3b8; width: 15vh; text-align: right; }
+
+
+        input {
+            font-size: 6vh;
+            width: 20vh;
+            text-align: center;
+            border-radius: 12px;
+            border: 4px solid var(--accent);
+            background: #0f172a;
+            color: white;
+            outline: none;
+            padding: 5px;
+        }
+
+
+        input:focus { border-color: #4ade80; }
+        input:disabled { opacity: 0.5; border-color: #334155; cursor: not-allowed; }
+        .den-input { border-color: var(--cheese); color: var(--cheese); }
+
+
+        .button-row { display: flex; align-items: center; gap: 2vw; margin-top: 1.5vh; height: 6vh; }
+
+
+        button {
+            font-size: 2.5vh;
+            padding: 1vh 4vw;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+
+        button:disabled { background: #475569; cursor: not-allowed; }
+        #next-btn { background: #4ade80; display: none; }
+
+
+        #feedback { 
+            height: 4vh; 
+            font-size: 2.8vh; 
+            font-weight: bold; 
+            margin-top: 1vh; 
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+
+<div id="game-container">
+    <div class="header">
+        <div class="stats">🏆 SCORE: <span id="score-val">0</span> | 🍕 LEVEL: <span id="level-val">1</span></div>
+        <div style="font-size: 1.6vh; color: #94a3b8;">Count total slices vs pieces in ONE whole</div>
+    </div>
+
+
+    <div id="visual-equation"></div>
+    
+    <div id="pizza-grid"></div>
+
+
+    <div class="controls">
+        <div class="improper-input-container">
+            <div class="input-wrapper">
+                <span class="input-label">Total Slices</span>
+                <input type="number" id="num-input" placeholder="0">
+            </div>
+            <div class="input-frac-line"></div>
+            <div class="input-wrapper">
+                <span class="input-label">Pieces per Whole</span>
+                <input type="number" id="den-input" class="den-input" placeholder="0">
+            </div>
+        </div>
+        <div class="button-row">
+            <button id="check-btn" onclick="submitAnswer()">CHECK FRACTION</button>
+            <button id="next-btn" onclick="nextQuestion()">NEXT ORDER →</button>
+        </div>
+        <div id="feedback"></div>
+    </div>
+</div>
+
+
+<script>
+    let score = 0;
+    let level = 1;
+    let currentProblem = { w: 0, n: 0, d: 1, total: 0 };
+
+
+    function nextQuestion() {
+        // Reset UI
+        document.getElementById('num-input').value = '';
+        document.getElementById('den-input').value = '';
+        document.getElementById('num-input').disabled = false;
+        document.getElementById('den-input').disabled = false;
+        document.getElementById('check-btn').disabled = false;
+        document.getElementById('check-btn').style.display = 'block';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('feedback').innerHTML = '';
+        
+        const dens = level === 1 ? [2, 4] : (level < 3 ? [3, 4, 5, 6] : [6, 8, 10, 12]);
+        const d = dens[Math.floor(Math.random() * dens.length)];
+        const w = Math.floor(Math.random() * (level < 4 ? 2 : 3)) + 1;
+        const n = Math.floor(Math.random() * (d - 1)) + 1;
+        
+        currentProblem = { w, n, d, total: (w * d) + n };
+        render();
+        document.getElementById('num-input').focus();
+    }
+
+
+    function render() {
+        document.getElementById('visual-equation').innerHTML = `
+            <div class="math-num">${currentProblem.w}</div>
+            <div class="fraction-stack">
+                <div class="frac-line">${currentProblem.n}</div>
+                <div class="frac-den">${currentProblem.d}</div>
+            </div>
+        `;
+
+
+        const grid = document.getElementById('pizza-grid');
+        grid.innerHTML = '';
+
+
+        for (let i = 0; i < currentProblem.w; i++) {
+            createInteractivePizza(grid, currentProblem.d, currentProblem.d, "WHOLE");
+        }
+        createInteractivePizza(grid, currentProblem.n, currentProblem.d, "EXTRA");
+    }
+
+
+    function createInteractivePizza(container, filledSlices, totalSlices, type) {
+        const wrap = document.createElement('div');
+        wrap.className = 'pizza-wrapper';
+        const canvas = document.createElement('canvas');
+        canvas.width = 400; canvas.height = 400;
+        wrap.appendChild(canvas);
+        const tag = document.createElement('div');
+        tag.className = 'pizza-tag';
+        tag.innerText = type;
+        wrap.appendChild(tag);
+        container.appendChild(wrap);
+
+
+        const ctx = canvas.getContext('2d');
+        let hoveredSlice = -1;
+
+
+        function draw() { renderPizzaFrame(ctx, filledSlices, totalSlices, hoveredSlice); }
+
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width) - 200;
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height) - 200;
+            const dist = Math.sqrt(x*x + y*y);
+            if (dist > 160 || dist < 10) {
+                hoveredSlice = -1;
+            } else {
+                let angle = Math.atan2(y, x);
+                if (angle < 0) angle += Math.PI * 2;
+                const sliceIdx = Math.floor(angle / ((Math.PI * 2) / totalSlices));
+                hoveredSlice = (sliceIdx < filledSlices) ? sliceIdx : -1;
+            }
+            draw();
+        });
+
+
+        canvas.addEventListener('mouseleave', () => { hoveredSlice = -1; draw(); });
+        draw();
+    }
+
+
+    function renderPizzaFrame(ctx, slicesToShow, totalSlices, hoveredIdx) {
+        const cx = 200, cy = 200, r = 160;
+        ctx.clearRect(0,0,400,400);
+        ctx.beginPath(); ctx.arc(cx, cy, r + 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#c68642'; ctx.fill();
+
+
+        const step = (Math.PI * 2) / totalSlices;
+        for (let i = 0; i < totalSlices; i++) {
+            const sAngle = i * step;
+            const eAngle = (i + 1) * step;
+            const mid = sAngle + step / 2;
+            let offsetX = (i === hoveredIdx) ? Math.cos(mid) * 15 : 0;
+            let offsetY = (i === hoveredIdx) ? Math.sin(mid) * 15 : 0;
+
+
+            if (i < slicesToShow) {
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, sAngle, eAngle); ctx.clip();
+                ctx.fillStyle = '#d32f2f'; ctx.fill();
+                const g = ctx.createRadialGradient(cx, cy, 20, cx, cy, r);
+                g.addColorStop(0, '#fffbe0'); g.addColorStop(1, '#ffd700');
+                ctx.fillStyle = g; ctx.fill();
+                ctx.beginPath(); ctx.arc(cx + Math.cos(mid)*(r*0.4), cy + Math.sin(mid)*(r*0.4), 15, 0, Math.PI*2);
+                ctx.fillStyle = '#a52a2a'; ctx.fill();
+                ctx.restore();
+
+
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                const lx = cx + Math.cos(mid) * (r * 0.72);
+                const ly = cy + Math.sin(mid) * (r * 0.72);
+                ctx.beginPath(); ctx.arc(lx, ly, 30, 0, Math.PI*2);
+                ctx.fillStyle = 'white'; ctx.fill();
+                ctx.strokeStyle = 'black'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = 'black'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`1`, lx, ly - 10);
+                ctx.beginPath(); ctx.moveTo(lx-15, ly); ctx.lineTo(lx+15, ly); ctx.stroke();
+                ctx.fillText(`${totalSlices}`, lx, ly + 18);
+                ctx.restore();
+
+
+                ctx.beginPath(); ctx.moveTo(cx + offsetX, cy + offsetY);
+                ctx.lineTo(cx + offsetX + Math.cos(sAngle)*r, cy + offsetY + Math.sin(sAngle)*r);
+                ctx.strokeStyle = '#b45309'; ctx.lineWidth = 4; ctx.stroke();
+            } else {
+                ctx.beginPath(); ctx.arc(cx, cy, r, sAngle, eAngle);
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.setLineDash([10,10]); ctx.stroke(); ctx.setLineDash([]);
+            }
+        }
+    }
+
+
+    function submitAnswer() {
+        const userNum = parseInt(document.getElementById('num-input').value);
+        const userDen = parseInt(document.getElementById('den-input').value);
+        const fb = document.getElementById('feedback');
+        const eq = document.getElementById('visual-equation');
+
+
+        if (userNum === currentProblem.total && userDen === currentProblem.d) {
+            // Lock UI and show Next button
+            document.getElementById('num-input').disabled = true;
+            document.getElementById('den-input').disabled = true;
+            document.getElementById('check-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'block';
+
+
+            eq.innerHTML += `
+                <div class="math-num" style="margin: 0 2vw; color: #4ade80;">=</div>
+                <div class="fraction-stack" style="color: #4ade80;">
+                    <div class="frac-line" style="border-color: #4ade80;">${userNum}</div>
+                    <div>${userDen}</div>
+                </div>
+            `;
+            fb.innerHTML = `<span style="color:#4ade80">✅ CORRECT! ${userNum}/${userDen} = ${currentProblem.w} ${currentProblem.n}/${currentProblem.d}</span>`;
+            
+            score += 10; if (score % 30 === 0) level++;
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('level-val').innerText = level;
+        } else if (userNum === currentProblem.total && userDen !== currentProblem.d) {
+            fb.innerHTML = `<span style="color:#fbbf24">Count is right, but look at the pieces per whole!</span>`;
+        } else if (userDen === currentProblem.d && userNum !== currentProblem.total) {
+            fb.innerHTML = `<span style="color:#fbbf24">Correct pieces per whole! Recount the total slices.</span>`;
+        } else {
+            fb.innerHTML = `<span style="color:#f87171">❌ Check your numbers again.</span>`;
+        }
+    }
+
+
+    nextQuestion();
+    
+    document.getElementById('num-input').addEventListener('keyup', (e) => {
+        if(e.key === 'Enter') document.getElementById('den-input').focus();
+    });
+    document.getElementById('den-input').addEventListener('keyup', (e) => {
+        if(e.key === 'Enter' && !document.getElementById('den-input').disabled) submitAnswer();
+    });
+</script>
+</body>
+</html>
